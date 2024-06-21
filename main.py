@@ -1,75 +1,47 @@
 import streamlit as st
-from PIL import Image
 import pandas as pd
-import numpy as np
 import time
+import os
 
-# Define the page layout
-st.set_page_config(page_title="Home Page", layout="wide")
+# Path to the dynamic file
+file_path = 'dynamic_data.csv'
 
-# Load your icons (ensure you have the icons saved in your working directory)
-left_icon = Image.open("NavyCrest.png")
-right_icon = Image.open("INACrest.png")
+# Function to read data from the file
+def read_data(file_path):
+    if os.path.exists(file_path):
+        return pd.read_csv(file_path)
+    else:
+        return pd.DataFrame()
 
-# Resize icons to the same size
-icon_size = (450, 400)  # Specify the size you want for the icons
-left_icon = left_icon.resize((550, 400))
-right_icon = right_icon.resize(icon_size)
-
-# Create columns for layout
-col1, col2, col3 = st.columns([1, 6, 1])
-
-# Display the left icon in the first column
-with col1:
-    st.image(left_icon, use_column_width=True)
-
-# Display the main content in the second column
-with col2:
-    st.title("Welcome to Indian Naval Academy")
-
-# Display the right icon in the third column
-with col3:
-    st.image(right_icon, use_column_width=True)
-
-st.title("Cross Country - Autumn Term 2024")
-
-# Function to generate random data
-def generate_data():
-    data = {
-        'Rank': np.random.randint(1, 100, 10),
-        'Chest Number': np.random.random(10),
-        'Name': np.random.choice(['A', 'B', 'C', 'D'], 10)
-    }
-    return pd.DataFrame(data)
-
-
-def generate_runner_positions(num_runners):
-    data = {
-        'Runner': [f'Runner {i+1}' for i in range(num_runners)],
-        'Position': np.random.randint(1, 101, num_runners),
-        'Distance Covered (km)': np.round(np.random.uniform(0, 10, num_runners), 2)
-    }
-    return pd.DataFrame(data).sort_values(by='Position')
-
-# Number of runners
-num_runners = 10
+# Function to watch file changes
+def watch_file(file_path, last_mod_time):
+    if os.path.exists(file_path):
+        mod_time = os.path.getmtime(file_path)
+        if mod_time != last_mod_time:
+            return mod_time
+    return last_mod_time
 
 # Title
-st.header("Real-Time Updates of Cross Country Runners' Positions")
+st.title("Real-Time File Upload and Display")
 
 # Placeholder for the table
 table_placeholder = st.empty()
 
+# Initial file modification time
+last_mod_time = None
+
+# Read initial data and display
+initial_data = read_data(file_path)
+table_placeholder.table(initial_data)
+
 # Interval for updating the table (in seconds)
-update_interval = 5
+update_interval = 2
 
 while True:
-    # Generate new positions data
-    df = generate_runner_positions(num_runners)
-    
-    # Display the updated table
-    with table_placeholder.container():
-        st.table(df)
-    
-    # Wait for the specified interval
+    last_mod_time = watch_file(file_path, last_mod_time)
+    if last_mod_time:
+        # Read the updated data and display
+        new_data = read_data(file_path)
+        table_placeholder.table(new_data)
     time.sleep(update_interval)
+    st.experimental_rerun()
